@@ -268,13 +268,24 @@ async def download_video(client, callback_query, chat_id, youtube_link, format_i
             if high_quality_thumb:
                 thumbnail_path = await download_and_resize_thumbnail(high_quality_thumb)
 
-        asyncio.create_task(upload_video(client, chat_id, output_filename, caption, duration, width, height, thumbnail_path, status_msg))
-else:
-    await status_msg.edit_text("❌ **Download Failed!**")
-    active_tasks.pop(chat_id, None)else:
-    await status_msg.edit_text("❌ **Download Failed!**")
-    active_tasks.pop(chat_id, None)
-   
+        # ✅ Run upload task asynchronously without blocking others
+        asyncio.create_task(
+            upload_video(
+                client, 
+                chat_id, 
+                output_filename, 
+                caption, 
+                duration, 
+                width, 
+                height, 
+                thumbnail_path, 
+                status_msg
+            )
+        )
+
+    else:
+        await status_msg.edit_text("❌ **Download Failed!**")
+        active_tasks.pop(chat_id, None)
 
 @Client.on_message(filters.regex(r'^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+'))
 async def process_youtube_link(client, message):
