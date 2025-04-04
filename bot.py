@@ -48,6 +48,7 @@ class Bot(Client):
         me = await self.get_me()
         logging.info(f"🤖 {me.first_name} (@{me.username}) running on Pyrogram v{__version__} (Layer {layer})")
         asyncio.create_task(schedule_task_reset(self))
+        create_task(process_uploads())
         tz = pytz.timezone('Asia/Kolkata')
         today = date.today()
         now = datetime.now(tz)
@@ -63,5 +64,4 @@ class Bot(Client):
         logging.info("🛑 Bot Stopped.")
 
 app = Bot()
-create_task(process_uploads())
 app.run()
