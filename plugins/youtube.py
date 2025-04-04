@@ -11,13 +11,15 @@ import string
 import psutil
 import requests
 from pyrogram import Client, filters
-from asyncio import create_task
+from asyncio import Queue, create_task
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from threading import Thread
 from database.db import db
 from PIL import Image
 
 active_tasks = {}
+upload_queue = Queue()
+pending_tasks = []
 
 def humanbytes(size):
     if not size:
@@ -268,25 +270,42 @@ async def download_video(client, callback_query, chat_id, youtube_link, format_i
             if high_quality_thumb:
                 thumbnail_path = await download_and_resize_thumbnail(high_quality_thumb)
 
-        # ✅ Run upload task asynchronously without blocking others
-        asyncio.create_task(
-            upload_video(
-                client, 
-                chat_id, 
-                output_filename, 
-                caption, 
-                duration, 
-                width, 
-                height, 
-                thumbnail_path, 
-                status_msg
-            )
-        )
-
+        await add_to_upload_queue(client, chat_id, output_filename, caption, duration, width, height, thumbnail_path, status_msg)   
     else:
         await status_msg.edit_text("❌ **Download Failed!**")
         active_tasks.pop(chat_id, None)
 
+
+async def add_to_upload_queue(client, chat_id, output_filename, caption, duration, width, height, thumbnail_path, status_msg):
+    task = {
+        "client": client,
+        "chat_id": chat_id,
+        "output_filename": output_filename,
+        "caption": caption,
+        "duration": duration,
+        "width": width,
+        "height": height,
+        "thumbnail_path": thumbnail_path,
+        "status_msg": status_msg
+    }
+    await upload_queue.put(task)
+    pending_tasks.append(chat_id)
+    await status_msg.edit_text("⏳ ᴛᴀsᴋ ᴀᴅᴅᴇᴅ ᴛᴏ ǫᴜᴇᴜᴇ...\nᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ꜰᴏʀ ʏᴏᴜʀ ᴛᴜʀɴ")
+
+async def process_uploads():
+    while True:
+        task = await upload_queue.get()
+        chat_id = task['chat_id']
+        status_msg = task['status_msg']
+        await status_msg.edit_text("⚡ ᴜᴘʟᴏᴀᴅ sᴛᴀʀᴛɪɴɢ ɴᴏᴡ...")
+        try:
+            await upload_video(**task)
+        except Exception as e:
+            await status_msg.edit_text(f"❌ ᴜᴘʟᴏᴀᴅ ꜰᴀɪʟᴇᴅ!\n{e}")
+        finally:
+            pending_tasks.remove(chat_id)
+            upload_queue.task_done()
+            
 @Client.on_message(filters.regex(r'^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+'))
 async def process_youtube_link(client, message):
     chat_id = message.chat.id
@@ -354,3 +373,11 @@ async def handle_download_button(client, callback_query):
     youtube_link = callback_query.message.reply_to_message.text
     chat_id = callback_query.message.chat.id
     await download_video(client, callback_query, chat_id, youtube_link, format_id)
+
+@Client.on_message(filters.command("pending"))
+async def show_pending(client, message):
+    if pending_tasks:
+        text = "📋 ᴘᴇɴᴅɪɴɢ ᴛᴀsᴋs:\n\n" + "\n".join([f"• ᴜsᴇʀ: `{id}`" for id in pending_tasks])
+    else:
+        text = "✅ ɴᴏ ᴘᴇɴᴅɪɴɢ ᴜᴘʟᴏᴀᴅs."
+    await message.reply_text(text)
