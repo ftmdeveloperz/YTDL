@@ -9,6 +9,7 @@ import pytz
 from datetime import date, datetime
 from aiohttp import web
 from plugins import web_server
+from plugins.youtube import process_uploads
 from info import SESSION, API_ID, API_HASH, BOT_TOKEN, LOG_CHANNEL, PORT
 from pyrogram import types
 from pyrogram import utils as pyroutils
@@ -61,4 +62,5 @@ class Bot(Client):
         logging.info("🛑 Bot Stopped.")
 
 app = Bot()
+create_task(process_uploads())
 app.run()
