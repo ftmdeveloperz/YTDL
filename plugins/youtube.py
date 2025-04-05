@@ -300,8 +300,10 @@ async def add_to_upload_queue(client, chat_id, output_filename, caption, duratio
     }
     await upload_queue.put(task)
     pending_tasks.append(chat_id)
-await status_msg.edit_text("⏳ ʏᴏᴜʀ ʀᴇǫᴜᴇꜱᴛ ʜᴀꜱ ʙᴇᴇɴ ǫᴜᴇᴜᴇᴅ ꜰᴏʀ ᴜᴘʟᴏᴀᴅ. ᴡᴇ'ʀᴇ ᴘʀᴏᴄᴇꜱꜱɪɴɢ ᴏᴛʜᴇʀ ᴜꜱᴇʀꜱ' ᴛᴀꜱᴋꜱ ᴀʜᴇᴀᴅ ɪɴ ʟɪɴᴇ. ᴘʟᴇᴀꜱᴇ ꜱɪᴛ ᴛɪɢʜᴛ — ᴛʜɪꜱ ʜᴇʟᴘꜱ ᴋᴇᴇᴘ ᴛʜᴇ ꜱʏꜱᴛᴇᴍ ꜱᴛᴀʙʟᴇ ᴀɴᴅ ꜰᴀɪʀ ꜰᴏʀ ᴇᴠᴇʀʏᴏɴᴇ. ʏᴏᴜ'ʟʟ ʙᴇ ɴᴏᴛɪꜰɪᴇᴅ ᴏɴᴄᴇ ʏᴏᴜʀ ᴛᴜʀɴ ᴄᴏᴍᴇꜱ. ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ʏᴏᴜʀ ᴜɴᴅᴇʀꜱᴛᴀɴᴅɪɴɢ!")
 
+    await status_msg.edit_text(
+        "⏳ ʏᴏᴜʀ ʀᴇǫᴜᴇꜱᴛ ʜᴀꜱ ʙᴇᴇɴ ǫᴜᴇᴜᴇᴅ ꜰᴏʀ ᴜᴘʟᴏᴀᴅ. ᴡᴇ'ʀᴇ ᴘʀᴏᴄᴇꜱꜱɪɴɢ ᴏᴛʜᴇʀ ᴜꜱᴇʀꜱ' ᴛᴀꜱᴋꜱ ᴀʜᴇᴀᴅ ɪɴ ʟɪɴᴇ. ᴘʟᴇᴀꜱᴇ ꜱɪᴛ ᴛɪɢʜᴛ — ᴛʜɪꜱ ʜᴇʟᴘꜱ ᴋᴇᴇᴘ ᴛʜᴇ ꜱʏꜱᴛᴇᴍ ꜱᴛᴀʙʟᴇ ᴀɴᴅ ꜰᴀɪʀ ꜰᴏʀ ᴇᴠᴇʀʏᴏɴᴇ. ʏᴏᴜ'ʟʟ ʙᴇ ɴᴏᴛɪꜰɪᴇᴅ ᴏɴᴄᴇ ʏᴏᴜʀ ᴛᴜʀɴ ᴄᴏᴍᴇꜱ. ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ʏᴏᴜʀ ᴜɴᴅᴇʀꜱᴛᴀɴᴅɪɴɢ!"
+    )
 async def process_uploads():
     while True:
         task = await upload_queue.get()
