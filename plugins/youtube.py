@@ -18,6 +18,8 @@ from threading import Thread
 from database.db import db
 from PIL import Image
 
+os.makedirs("downloads", exist_ok=True)
+
 active_tasks = {}
 upload_queue = Queue()
 pending_tasks = []
@@ -147,8 +149,15 @@ def yt_progress_hook(d, queue, client):
         asyncio.run_coroutine_threadsafe(queue.put((1, 1, "✅ **Download Complete! Uploading...**")), client.loop)
         asyncio.run_coroutine_threadsafe(queue.put(None), client.loop)  # Stop progress loop
 
-async def download_and_resize_thumbnail(url, save_path="thumbnail.jpg"):
+def generate_thumbnail_path():
+    timestamp = int(time.time())
+    unique_id = uuid.uuid4().hex
+    return os.path.join("downloads", f"thumb_{unique_id}_{timestamp}.jpg")
+
+async def download_and_resize_thumbnail(url):
     try:
+        save_path = generate_thumbnail_path()
+
         response = requests.get(url, stream=True)
         if response.status_code == 200:
             with open(save_path, 'wb') as f:
@@ -162,7 +171,7 @@ async def download_and_resize_thumbnail(url, save_path="thumbnail.jpg"):
     except Exception as e:
         logging.exception("Thumbnail download failed: %s", e)
     return None
-
+    
 async def upload_video(client, chat_id, output_filename, caption, duration, width, height, thumbnail_path, status_msg):
     if output_filename and os.path.exists(output_filename):
         await status_msg.edit_text("📤 **Uploading video...**")
@@ -291,7 +300,7 @@ async def add_to_upload_queue(client, chat_id, output_filename, caption, duratio
     }
     await upload_queue.put(task)
     pending_tasks.append(chat_id)
-    await status_msg.edit_text("⏳ ᴛᴀsᴋ ᴀᴅᴅᴇᴅ ᴛᴏ ǫᴜᴇᴜᴇ...\nᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ꜰᴏʀ ʏᴏᴜʀ ᴛᴜʀɴ")
+await status_msg.edit_text("⏳ ʏᴏᴜʀ ʀᴇǫᴜᴇꜱᴛ ʜᴀꜱ ʙᴇᴇɴ ǫᴜᴇᴜᴇᴅ ꜰᴏʀ ᴜᴘʟᴏᴀᴅ. ᴡᴇ'ʀᴇ ᴘʀᴏᴄᴇꜱꜱɪɴɢ ᴏᴛʜᴇʀ ᴜꜱᴇʀꜱ' ᴛᴀꜱᴋꜱ ᴀʜᴇᴀᴅ ɪɴ ʟɪɴᴇ. ᴘʟᴇᴀꜱᴇ ꜱɪᴛ ᴛɪɢʜᴛ — ᴛʜɪꜱ ʜᴇʟᴘꜱ ᴋᴇᴇᴘ ᴛʜᴇ ꜱʏꜱᴛᴇᴍ ꜱᴛᴀʙʟᴇ ᴀɴᴅ ꜰᴀɪʀ ꜰᴏʀ ᴇᴠᴇʀʏᴏɴᴇ. ʏᴏᴜ'ʟʟ ʙᴇ ɴᴏᴛɪꜰɪᴇᴅ ᴏɴᴄᴇ ʏᴏᴜʀ ᴛᴜʀɴ ᴄᴏᴍᴇꜱ. ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ʏᴏᴜʀ ᴜɴᴅᴇʀꜱᴛᴀɴᴅɪɴɢ!")
 
 async def process_uploads():
     while True:
@@ -378,7 +387,13 @@ async def handle_download_button(client, callback_query):
 @Client.on_message(filters.command("pending"))
 async def show_pending(client, message):
     if pending_tasks:
-        text = "📋 ᴘᴇɴᴅɪɴɢ ᴛᴀsᴋs:\n\n" + "\n".join([f"• ᴜsᴇʀ: `{id}`" for id in pending_tasks])
+        text = (
+            "⏳ **ᴜᴘʟᴏᴀᴅ Qᴜᴇᴜᴇ ɪɴ ᴘʀᴏɢʀᴇꜱꜱ**\n\n"
+            "ᴛʜᴇ ꜰᴏʟʟᴏᴡɪɴɢ ᴜꜱᴇʀꜱ ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴡᴀɪᴛɪɴɢ ꜰᴏʀ ᴛʜᴇɪʀ ᴛᴜʀɴ:\n\n" +
+            "\n".join([f"• ᴜꜱᴇʀ: `{user_id}`" for user_id in pending_tasks]) +
+            "\n\nᴘʟᴇᴀꜱᴇ ʙᴇ ᴘᴀᴛɪᴇɴᴛ — ᴇᴀᴄʜ ᴛᴀꜱᴋ ɪꜱ ᴘʀᴏᴄᴇꜱꜱᴇᴅ ᴡɪᴛʜ ᴄᴀʀᴇ. ᴛʜᴀɴᴋ ʏᴏᴜ ꜰᴏʀ ʏᴏᴜʀ ᴜɴᴅᴇʀꜱᴛᴀɴᴅɪɴɢ!"
+        )
     else:
-        text = "✅ ɴᴏ ᴘᴇɴᴅɪɴɢ ᴜᴘʟᴏᴀᴅs."
+        text = "✅ **ɢᴏᴏᴅ ɴᴇᴡꜱ!** ᴛʜᴇʀᴇ ᴀʀᴇ ɴᴏ ᴘᴇɴᴅɪɴɢ ᴛᴀꜱᴋꜱ ɪɴ ᴛʜᴇ ǫᴜᴇᴜᴇ. ʏᴏᴜʀ ʀᴇǫᴜᴇꜱᴛꜱ ᴡɪʟʟ ʙᴇ ᴘʀᴏᴄᴇꜱꜱᴇᴅ ɪɴꜱᴛᴀɴᴛʟʏ!"
+    
     await message.reply_text(text)
