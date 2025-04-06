@@ -109,8 +109,9 @@ async def handle_message(client, message):
             await message.reply_text("No thumbnail available for this file.")
 
         # Add inline button for download
+        message_id = message.message_id if hasattr(message, 'message_id') else None
         inline_buttons = [
-            [InlineKeyboardButton("Yes, Download", callback_data=f"download_{download_link}_{file_name}_{message.chat.id}_{message.message_id}")],
+            [InlineKeyboardButton("Yes, Download", callback_data=f"download_{download_link}_{file_name}_{message.chat.id}_{message_id}")],
             [InlineKeyboardButton("No, Cancel", callback_data="cancel")]
         ]
         
