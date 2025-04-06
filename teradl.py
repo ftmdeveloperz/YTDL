@@ -6,7 +6,7 @@ import logging
 # Load environment variables
 API_ID = int(os.getenv("API_ID", 22141398))  # Default value is provided
 API_HASH = os.getenv("API_HASH", '0c8f8bd171e05e42d6f6e5a6f4305389')  # Default value is provided
-BOT_TOKEN = os.getenv("BOT_TOKEN", '7575260816:AAGQeiKMKUGZF19yid7LylIL9CG4zIy135w')  # You should set the BOT_TOKEN as an environment variable
+BOT_TOKEN = os.getenv("BOT_TOKEN", '6346317908:AAH2nKFgF-MQOOzI_S30PZKNZK_aCoUhDC4')  # You should set the BOT_TOKEN as an environment variable
 
 # Check if BOT_TOKEN is set
 if not BOT_TOKEN:
