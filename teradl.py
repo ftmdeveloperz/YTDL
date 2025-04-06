@@ -1,6 +1,7 @@
 import os
 import requests
 from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
 
 # Load environment variables
@@ -39,8 +40,8 @@ def get_file_details(link):
         logger.error(f"Error fetching file details for {link}: {e}")
         return None
 
-# Function to download the file
-def download_file(download_link, file_name):
+# Function to download the file with progress tracking
+def download_file(download_link, file_name, chat_id, message_id):
     try:
         logger.info(f"Downloading file: {file_name} from {download_link}")
         response = requests.get(download_link, stream=True)
@@ -50,6 +51,7 @@ def download_file(download_link, file_name):
             logger.error(f"Failed to download file from {download_link}. Status code: {response.status_code}")
             return None
         
+        total_size = int(response.headers.get('Content-Length', 0))
         temp_file_path = f"downloads/{file_name}"
         
         # Make sure the downloads directory exists
@@ -57,8 +59,13 @@ def download_file(download_link, file_name):
             os.makedirs("downloads")
         
         with open(temp_file_path, "wb") as f:
+            downloaded_size = 0
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
+                downloaded_size += len(chunk)
+                # Send progress update
+                progress = (downloaded_size / total_size) * 100
+                bot.edit_message_text(chat_id, message_id, f"Downloading... {progress:.2f}%")
         
         logger.info(f"File downloaded successfully: {file_name}")
         return temp_file_path
@@ -101,50 +108,56 @@ async def handle_message(client, message):
         else:
             await message.reply_text("No thumbnail available for this file.")
 
-        # Now ask user for confirmation to proceed with download
-        await message.reply_text(
-            "Do you want to proceed with the download? (Reply 'Yes' to proceed or 'No' to cancel)"
-        )
+        # Add inline button for download
+        inline_buttons = [
+            [InlineKeyboardButton("Yes, Download", callback_data=f"download_{download_link}_{file_name}_{message.chat.id}_{message.message_id}")],
+            [InlineKeyboardButton("No, Cancel", callback_data="cancel")]
+        ]
         
-        # Store user's choice
-        user_choice = None
-
-        # Wait for user response (the bot listens for the next message)
-        @bot.on_message(filters.text & filters.user(message.from_user.id))
-        async def user_reply(client, msg):
-            nonlocal user_choice
-            user_choice = msg.text.strip().lower()
-            
-            if user_choice == "yes":
-                # Proceed with download
-                file_path = download_file(download_link, file_name)
-                
-                if file_path:
-                    # Send the file directly to the user
-                    try:
-                        logger.info(f"Sending file {file_name} to user: {message.from_user.username or message.from_user.id}")
-                        if thumbnail:
-                            await message.reply_document(file_path, caption=caption, thumb=thumbnail)
-                        else:
-                            await message.reply_document(file_path, caption=caption)
-                        
-                        os.remove(file_path)  # Clean up the downloaded file after sending
-                        logger.info(f"File {file_name} sent successfully and deleted from local storage.")
-                    except Exception as e:
-                        logger.error(f"Error sending the file to the user: {e}")
-                        await message.reply("Sorry, there was an error sending the file.")
-                else:
-                    logger.error(f"Failed to download file: {file_name}")
-                    await message.reply("Sorry, there was an error downloading the file.")
-            elif user_choice == "no":
-                await message.reply("Download canceled.")
-            else:
-                await message.reply("Invalid response. Please reply with 'Yes' or 'No'.")
+        await message.reply_text(
+            "Do you want to proceed with the download? Click 'Yes' to proceed or 'No' to cancel.",
+            reply_markup=InlineKeyboardMarkup(inline_buttons)
+        )
     
     else:
         # If there was an error or no data, inform the user
         logger.error(f"Failed to fetch file details for link: {link}")
         await message.reply("Sorry, I couldn't fetch the file details. Please check the link and try again.")
+
+# Callback query handler to process the download button click
+@bot.on_callback_query()
+async def on_button_click(client, callback_query):
+    data = callback_query.data
+    user_id = callback_query.from_user.id
+    chat_id = callback_query.message.chat.id
+    message_id = callback_query.message.message_id
+    
+    if data.startswith("download_"):
+        parts = data.split("_")
+        download_link = parts[1]
+        file_name = parts[2]
+        
+        # Inform the user that the download has started
+        await callback_query.message.edit_text("Downloading... Please wait.")
+        
+        # Start the download process
+        file_path = download_file(download_link, file_name, chat_id, message_id)
+        
+        if file_path:
+            # Send the file directly to the user
+            try:
+                logger.info(f"Sending file {file_name} to user: {user_id}")
+                await callback_query.message.reply_document(file_path, caption=f"**File Name:** {file_name}")
+                os.remove(file_path)  # Clean up the downloaded file after sending
+                logger.info(f"File {file_name} sent successfully and deleted from local storage.")
+            except Exception as e:
+                logger.error(f"Error sending the file to the user: {e}")
+                await callback_query.message.reply("Sorry, there was an error sending the file.")
+        else:
+            await callback_query.message.reply("Sorry, there was an error downloading the file.")
+    
+    elif data == "cancel":
+        await callback_query.message.edit_text("Download canceled.")
 
 # Start the bot
 bot.run()
