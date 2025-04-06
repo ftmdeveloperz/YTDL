@@ -2,7 +2,6 @@ import logging
 import logging.config
 import os
 import asyncio
-from asyncio import create_task
 from pyrogram import Client, __version__
 from pyrogram.raw.all import layer
 from aiohttp import web
@@ -10,7 +9,6 @@ import pytz
 from datetime import date, datetime
 from aiohttp import web
 from plugins import web_server
-from plugins.youtube import process_uploads
 from info import SESSION, API_ID, API_HASH, BOT_TOKEN, LOG_CHANNEL, PORT
 from pyrogram import types
 from pyrogram import utils as pyroutils
@@ -27,8 +25,10 @@ logging.getLogger("pyrogram").setLevel(logging.ERROR)
 
 async def schedule_task_reset(self):
     scheduler = AsyncIOScheduler(timezone=pytz.timezone("Asia/Kolkata"))
-    scheduler.add_job(db.reset_daily_tasks, "cron", hour=0, minute=0, args=[self])  # Raat ke 12 baje reset hoga
+    scheduler.add_job(self.db.reset_daily_tasks, "cron", hour=0, minute=0, args=[self])  # Raat ke 12 baje reset hoga
     scheduler.start()
+
+
 
 
 class Bot(Client):
@@ -48,7 +48,6 @@ class Bot(Client):
         me = await self.get_me()
         logging.info(f"🤖 {me.first_name} (@{me.username}) running on Pyrogram v{__version__} (Layer {layer})")
         asyncio.create_task(schedule_task_reset(self))
-        create_task(process_uploads())
         tz = pytz.timezone('Asia/Kolkata')
         today = date.today()
         now = datetime.now(tz)
